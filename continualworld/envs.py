@@ -1,10 +1,11 @@
 from copy import deepcopy
 from typing import Any, Dict, List, Tuple, Union
 
-import gym
+# import gym
+import gymnasium as gym
 import metaworld
 import numpy as np
-from gym.wrappers import TimeLimit
+from gymnasium.wrappers import TimeLimit
 
 from continualworld.utils.wrappers import OneHotAdder, RandomizationWrapper, SuccessCounter
 

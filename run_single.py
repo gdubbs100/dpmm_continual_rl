@@ -6,6 +6,8 @@ from continualworld.sac.utils.logx import EpochLogger
 from continualworld.utils.utils import get_activation_from_str
 from input_args import single_parse_args
 
+import tensorflow as tf
+print(f"LOOK ----> {tf.executing_eagerly()}")
 
 def main(
     logger: EpochLogger,
