@@ -4,7 +4,7 @@ import random
 import time
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
-import gym
+import gymnasium as gym
 import numpy as np
 import tensorflow as tf
 
@@ -181,7 +181,11 @@ class SAC:
             + self.critic2.common_variables
         )
 
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
+        # self.optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
+        self.actor_optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
+        self.critic_optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
+        self.alpha_optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
+
 
         # For reference on automatic alpha tuning, see
         # "Automating Entropy Adjustment for Maximum Entropy" section
@@ -381,12 +385,13 @@ class SAC:
         critic_gradients: List[tf.Tensor],
         alpha_gradient: List[tf.Tensor],
     ) -> None:
-        self.optimizer.apply_gradients(zip(actor_gradients, self.actor.trainable_variables))
 
-        self.optimizer.apply_gradients(zip(critic_gradients, self.critic_variables))
+        self.actor_optimizer.apply_gradients(zip(actor_gradients, self.actor.trainable_variables))
+
+        self.critic_optimizer.apply_gradients(zip(critic_gradients, self.critic_variables))
 
         if self.auto_alpha:
-            self.optimizer.apply_gradients([(alpha_gradient, self.all_log_alpha)])
+            self.alpha_optimizer.apply_gradients([(alpha_gradient, self.all_log_alpha)])
 
         # Polyak averaging for target variables
         for v, target_v in zip(
@@ -409,9 +414,11 @@ class SAC:
             for j in range(num_episodes):
                 obs, done, episode_return, episode_len = test_env.reset(), False, 0, 0
                 while not (done or (episode_len == self.max_episode_len)):
-                    obs, reward, done, _ = test_env.step(
+                    ## TODO: perhaps add a wrapper 
+                    obs, reward, terminated, truncated, _ = test_env.step(
                         self.get_action_test(tf.convert_to_tensor(obs), tf.constant(deterministic))
                     )
+                    done = terminated or truncated
                     episode_return += reward
                     episode_len += 1
                 self.logger.store(
@@ -493,13 +500,14 @@ class SAC:
             dir_prefixes.append(f"./checkpoints/task{current_task_idx}")
             if current_task_idx == self.num_tasks - 1:
                 dir_prefixes.append("./checkpoints")
-
+        
         for prefix in dir_prefixes:
-            self.actor.save_weights(os.path.join(prefix, "actor"))
-            self.critic1.save_weights(os.path.join(prefix, "critic1"))
-            self.target_critic1.save_weights(os.path.join(prefix, "target_critic1"))
-            self.critic2.save_weights(os.path.join(prefix, "critic2"))
-            self.target_critic2.save_weights(os.path.join(prefix, "target_critic2"))
+            os.makedirs(prefix, exist_ok=True)
+            self.actor.save_weights(os.path.join(prefix, "actor.weights.h5"))
+            self.critic1.save_weights(os.path.join(prefix, "critic1.weights.h5"))
+            self.target_critic1.save_weights(os.path.join(prefix, "target_critic1.weights.h5"))
+            self.critic2.save_weights(os.path.join(prefix, "critic2.weights.h5"))
+            self.target_critic2.save_weights(os.path.join(prefix, "target_critic2.weights.h5"))
 
     def _handle_task_change(self, current_task_idx: int):
         self.on_task_start(current_task_idx)
@@ -531,12 +539,14 @@ class SAC:
 
     def run(self):
         """A method to run the SAC training, after the object has been created."""
+
         self.start_time = time.time()
         obs, episode_return, episode_len = self.env.reset(), 0, 0
 
         # Main loop: collect experience in env and update/log each epoch
         current_task_timestep = 0
         current_task_idx = -1
+
         self.learn_on_batch = self.get_learn_on_batch(current_task_idx)
 
         for global_timestep in range(self.steps):
@@ -555,9 +565,10 @@ class SAC:
                 action = self.get_action(tf.convert_to_tensor(obs))
             else:
                 action = self.env.action_space.sample()
-
+            ## TODO: perhaps add another wrapper
             # Step the env
-            next_obs, reward, done, info = self.env.step(action)
+            next_obs, reward, terminated, truncated, info = self.env.step(action)
+            done = terminated or truncated
             episode_return += reward
             episode_len += 1
 
@@ -587,12 +598,10 @@ class SAC:
                 current_task_timestep >= self.update_after
                 and current_task_timestep % self.update_every == 0
             ):
-
                 for j in range(self.update_every):
                     batch = self.replay_buffer.sample_batch(self.batch_size)
 
                     episodic_batch = self.get_episodic_batch(current_task_idx)
-
                     results = self.learn_on_batch(
                         tf.convert_to_tensor(current_task_idx), batch, episodic_batch
                     )

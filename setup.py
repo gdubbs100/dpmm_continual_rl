@@ -4,7 +4,9 @@ from setuptools import find_packages, setup
 required = [
     "tensorflow>=2.0",
     "mujoco-py<2.2,>=2.1",
-    "metaworld @ git+https://github.com/rlworkgroup/metaworld.git@18118a28c06893da0f363786696cc792457b062b#egg=metaworld",
+    # "metaworld @ git+https://github.com/rlworkgroup/metaworld.git@18118a28c06893da0f363786696cc792457b062b#egg=metaworld",
+    "metaworld @ git+https://github.com/Farama-Foundation/Metaworld.git@master#egg=metaworld",
+    "gymnasium",
     "pandas",
     "matplotlib",
     "seaborn",
