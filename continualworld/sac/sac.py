@@ -524,7 +524,9 @@ class SAC:
             self.target_critic2.set_weights(self.critic2.get_weights())
 
         if self.reset_optimizer_on_task_change:
-            reset_optimizer(self.optimizer)
+            reset_optimizer(self.actor_optimizer)
+            reset_optimizer(self.critic_optimizer)
+            reset_optimizer(self.alpha_optimizer)
 
         # Update variables list and update function in case model changed.
         # E.g: For VCL after the first task we set trainable=False for layer

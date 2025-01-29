@@ -1,7 +1,6 @@
 from copy import deepcopy
 from typing import Any, Dict, List, Tuple, Union
 
-# import gym
 import gymnasium as gym
 import metaworld
 import numpy as np
@@ -127,7 +126,8 @@ class ContinualLearningEnv(gym.Env):
 
     def step(self, action: Any) -> Tuple[np.ndarray, float, bool, Dict]:
         self._check_steps_bound()
-        obs, reward, done, info = self.envs[self.cur_seq_idx].step(action)
+        obs, reward, truncated, terminated, info = self.envs[self.cur_seq_idx].step(action)
+        done = truncated or terminated
         info["seq_idx"] = self.cur_seq_idx
 
         self.cur_step += 1
@@ -139,7 +139,7 @@ class ContinualLearningEnv(gym.Env):
 
             self.cur_seq_idx += 1
 
-        return obs, reward, done, info
+        return obs, reward, truncated, terminated, info
 
     def reset(self) -> np.ndarray:
         self._check_steps_bound()
@@ -167,9 +167,10 @@ def get_cl_env(
         env = MT50.train_classes[task_name]()
         env = RandomizationWrapper(env, get_subtasks(task_name), randomization)
         env = OneHotAdder(env, one_hot_idx=i, one_hot_len=num_tasks)
-        env.name = task_name
+        # env.name = task_name
         env = TimeLimit(env, META_WORLD_TIME_HORIZON)
         env = SuccessCounter(env)
+        env.name = task_name
         envs.append(env)
     cl_env = ContinualLearningEnv(envs, steps_per_task)
     cl_env.name = "ContinualLearningEnv"
