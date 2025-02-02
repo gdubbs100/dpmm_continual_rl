@@ -126,8 +126,12 @@ class ContinualLearningEnv(gym.Env):
 
     def step(self, action: Any) -> Tuple[np.ndarray, float, bool, Dict]:
         self._check_steps_bound()
+<<<<<<< HEAD
         obs, reward, truncated, terminated, info = self.envs[self.cur_seq_idx].step(action)
         done = truncated or terminated
+=======
+        obs, reward, done, info = self.envs[self.cur_seq_idx].step(action)
+>>>>>>> 49af4c624df3b9d0a076e51d88895aee865bd130
         info["seq_idx"] = self.cur_seq_idx
 
         self.cur_step += 1
@@ -139,7 +143,11 @@ class ContinualLearningEnv(gym.Env):
 
             self.cur_seq_idx += 1
 
+<<<<<<< HEAD
         return obs, reward, truncated, terminated, info
+=======
+        return obs, reward, done, info
+>>>>>>> 49af4c624df3b9d0a076e51d88895aee865bd130
 
     def reset(self) -> np.ndarray:
         self._check_steps_bound()
@@ -167,10 +175,16 @@ def get_cl_env(
         env = MT50.train_classes[task_name]()
         env = RandomizationWrapper(env, get_subtasks(task_name), randomization)
         env = OneHotAdder(env, one_hot_idx=i, one_hot_len=num_tasks)
+<<<<<<< HEAD
         # env.name = task_name
         env = TimeLimit(env, META_WORLD_TIME_HORIZON)
         env = SuccessCounter(env)
         env.name = task_name
+=======
+        env.name = task_name
+        env = TimeLimit(env, META_WORLD_TIME_HORIZON)
+        env = SuccessCounter(env)
+>>>>>>> 49af4c624df3b9d0a076e51d88895aee865bd130
         envs.append(env)
     cl_env = ContinualLearningEnv(envs, steps_per_task)
     cl_env.name = "ContinualLearningEnv"
